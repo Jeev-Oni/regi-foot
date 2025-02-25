@@ -13,11 +13,11 @@ import { getDatabase, ref, set, serverTimestamp } from "firebase/database";
 
 // Your Firebase configuration - replace with your actual config
 const firebaseConfig = {
-	apiKey: "YOUR_API_KEY",
-	authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-	databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-	projectId: "YOUR_PROJECT_ID",
-	storageBucket: "YOUR_PROJECT_ID.appspot.com",
+	apiKey: "AIzaSyDw0xgKOjHZA5hmK--j5a3ue8U1dWn3vW0",
+	authDomain: "regi-database.firebaseapp.com",
+	databaseURL:"https://regi-database-default-rtdb.asia-southeast1.firebasedatabase.app/",
+	projectId: "regi-database",
+	storageBucket: "regi-database.appspot.com",
 	messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
 	appId: "YOUR_APP_ID",
 };
