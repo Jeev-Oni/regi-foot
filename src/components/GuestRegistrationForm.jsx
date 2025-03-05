@@ -26,18 +26,6 @@ const GuestRegistrationForm = ({ onCancel }) => {
 			return;
 		}
 
-		if (guestPassword !== confirmPassword) {
-			setError("Passwords do not match");
-			setIsLoading(false);
-			return;
-		}
-
-		if (guestPassword.length < 6) {
-			setError("Password must be at least 6 characters long");
-			setIsLoading(false);
-			return;
-		}
-
 		try {
 			// Sign in anonymously
 			const userCredential = await loginAsGuest();
@@ -155,7 +143,6 @@ const GuestRegistrationForm = ({ onCancel }) => {
 
 			<div className="mt-4 text-sm text-gray-600 italic">
 				<p>*Note: Registration is subject to availability.</p>
-				<p>*Password is required for future mobile number login.</p>
 			</div>
 		</div>
 	);
