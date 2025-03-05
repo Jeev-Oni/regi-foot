@@ -1,4 +1,3 @@
-// File: src/components/firebase/SocialLogins.jsx
 import React, { useState } from "react";
 import { loginWithGoogle, saveUserLoginInfo } from "../services/firebase";
 
@@ -20,16 +19,7 @@ const SocialLogins = ({ onGuestClick }) => {
 	};
 
 	return (
-		<div className="space-y-4 mt-4">
-			<div className="relative">
-				<div className="absolute inset-0 flex items-center">
-					<div className="w-full border-t border-gray-300"></div>
-				</div>
-				<div className="relative flex justify-center text-sm">
-					<span className="px-2 bg-white text-gray-500">OR</span>
-				</div>
-			</div>
-
+		<div className="space-y-4">
 			<button
 				onClick={handleGoogleLogin}
 				disabled={isLoading}
@@ -55,6 +45,12 @@ const SocialLogins = ({ onGuestClick }) => {
 				</svg>
 				<span>Login as Guest</span>
 			</button>
+
+			{error && (
+				<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4">
+					<span className="block sm:inline">{error}</span>
+				</div>
+			)}
 		</div>
 	);
 };

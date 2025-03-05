@@ -12,6 +12,4 @@ export const firebaseConfig = {
 // Available sessions
 export const availableSessions = [
 	"February 08, 2024",
-	"February 15, 2024",
-	"February 22, 2024",
 ];

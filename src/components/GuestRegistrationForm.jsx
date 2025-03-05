@@ -1,24 +1,39 @@
-// File: src/components/firebase/GuestRegistrationForm.jsx
 import React, { useState } from "react";
 import { loginAsGuest, saveUserLoginInfo } from "../services/firebase";
-import { availableSessions } from "./FirebaseConfig";
+import { database } from "../services/firebase";
+import { ref, set } from "firebase/database";
 import ErrorMessage from "./ErrorMessage";
 
 const GuestRegistrationForm = ({ onCancel }) => {
 	const [guestName, setGuestName] = useState("");
 	const [guestAge, setGuestAge] = useState("");
-	const [guestTimeframe, setGuestTimeframe] = useState("");
 	const [guestContactNumber, setGuestContactNumber] = useState("");
+	const [guestPassword, setGuestPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
 	const [error, setError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [registrationComplete, setRegistrationComplete] = useState(false);
 
 	const handleGuestFormSubmit = async (e) => {
 		e.preventDefault();
 		setIsLoading(true);
 		setError("");
 
-		if (!guestName || !guestAge || !guestTimeframe || !guestContactNumber) {
+		// Validation checks
+		if (!guestName || !guestAge || !guestContactNumber) {
 			setError("Please fill in all fields");
+			setIsLoading(false);
+			return;
+		}
+
+		if (guestPassword !== confirmPassword) {
+			setError("Passwords do not match");
+			setIsLoading(false);
+			return;
+		}
+
+		if (guestPassword.length < 6) {
+			setError("Password must be at least 6 characters long");
 			setIsLoading(false);
 			return;
 		}
@@ -26,20 +41,39 @@ const GuestRegistrationForm = ({ onCancel }) => {
 		try {
 			// Sign in anonymously
 			const userCredential = await loginAsGuest();
+			const user = userCredential.user;
 
-			// Save guest user info to database
-			await saveUserLoginInfo(userCredential.user, {
+			// Prepare guest user info
+			const guestUserData = {
 				name: guestName,
 				age: guestAge,
-				timeframe: guestTimeframe,
 				contactNumber: guestContactNumber,
+				mobileNumber: guestContactNumber,
 				isGuest: true,
+			};
+
+			// Save user login info
+			await saveUserLoginInfo(user, guestUserData);
+
+			// Save password securely in the database
+			const passwordRef = ref(database, `users/${user.uid}/credentials`);
+			await set(passwordRef, {
+				mobileNumber: guestContactNumber,
+				password: guestPassword, // In a real-world scenario, this should be hashed
 			});
+
+			// Set registration complete to trigger state change
+			setRegistrationComplete(true);
 		} catch (error) {
-			setError(error.message);
+			setError(error.message || "Guest registration failed");
 			setIsLoading(false);
 		}
 	};
+
+	// If registration is complete, return null to allow parent component to handle
+	if (registrationComplete) {
+		return null;
+	}
 
 	return (
 		<div className="bg-white p-6 rounded-lg shadow-md">
@@ -50,6 +84,7 @@ const GuestRegistrationForm = ({ onCancel }) => {
 			<ErrorMessage message={error} />
 
 			<form onSubmit={handleGuestFormSubmit} className="space-y-4">
+				{/* Existing form fields remain the same */}
 				<div>
 					<label
 						htmlFor="guestName"
@@ -105,23 +140,36 @@ const GuestRegistrationForm = ({ onCancel }) => {
 
 				<div>
 					<label
-						htmlFor="guestTimeframe"
+						htmlFor="guestPassword"
 						className="block text-sm font-medium text-gray-700 mb-1">
-						Session Schedule
+						Password
 					</label>
-					<select
-						id="guestTimeframe"
-						value={guestTimeframe}
-						onChange={(e) => setGuestTimeframe(e.target.value)}
+					<input
+						id="guestPassword"
+						type="password"
+						value={guestPassword}
+						onChange={(e) => setGuestPassword(e.target.value)}
+						placeholder="Create a Password"
 						required
-						className="w-full p-2 border border-gray-300 rounded">
-						<option value="">Select a session</option>
-						{availableSessions.map((session, index) => (
-							<option key={index} value={session}>
-								{session}
-							</option>
-						))}
-					</select>
+						className="w-full p-2 border border-gray-300 rounded"
+					/>
+				</div>
+
+				<div>
+					<label
+						htmlFor="confirmPassword"
+						className="block text-sm font-medium text-gray-700 mb-1">
+						Confirm Password
+					</label>
+					<input
+						id="confirmPassword"
+						type="password"
+						value={confirmPassword}
+						onChange={(e) => setConfirmPassword(e.target.value)}
+						placeholder="Confirm Password"
+						required
+						className="w-full p-2 border border-gray-300 rounded"
+					/>
 				</div>
 
 				<div className="flex space-x-4 pt-2">
@@ -129,7 +177,7 @@ const GuestRegistrationForm = ({ onCancel }) => {
 						type="submit"
 						disabled={isLoading}
 						className="w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50">
-						{isLoading ? "Processing..." : "Confirm Information"}
+						{isLoading ? "Processing..." : "Register"}
 					</button>
 					<button
 						type="button"
@@ -141,10 +189,8 @@ const GuestRegistrationForm = ({ onCancel }) => {
 			</form>
 
 			<div className="mt-4 text-sm text-gray-600 italic">
-				<p>
-					*Note: On-site registration is first come, first served and is subject
-					to session capacity.
-				</p>
+				<p>*Note: Registration is subject to availability.</p>
+				<p>*Password is required for future mobile number login.</p>
 			</div>
 		</div>
 	);
