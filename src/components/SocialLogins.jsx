@@ -12,6 +12,7 @@ const SocialLogins = ({ onGuestClick }) => {
 		try {
 			const userCredential = await loginWithGoogle();
 			await saveUserLoginInfo(userCredential.user);
+			setIsLoading(false);
 		} catch (error) {
 			setError(error.message);
 			setIsLoading(false);

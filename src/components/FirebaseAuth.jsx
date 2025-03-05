@@ -4,7 +4,6 @@ import { onAuthStateChanged } from "firebase/auth";
 import { availableSessions } from "./FirebaseConfig";
 
 // Import components
-import EmailLoginForm from "./EmailLoginForm";
 import SocialLogins from "./SocialLogins";
 import GuestRegistrationForm from "./GuestRegistrationForm";
 import UserProfile from "./UserProfile";
@@ -126,7 +125,6 @@ const FirebaseAuth = () => {
 					LOG IN
 				</h3>
 
-				<EmailLoginForm />
 				<SocialLogins onGuestClick={() => setShowGuestForm(true)} />
 			</div>
 		</div>

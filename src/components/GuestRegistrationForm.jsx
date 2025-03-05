@@ -84,7 +84,6 @@ const GuestRegistrationForm = ({ onCancel }) => {
 			<ErrorMessage message={error} />
 
 			<form onSubmit={handleGuestFormSubmit} className="space-y-4">
-				{/* Existing form fields remain the same */}
 				<div>
 					<label
 						htmlFor="guestName"
@@ -133,40 +132,6 @@ const GuestRegistrationForm = ({ onCancel }) => {
 						value={guestContactNumber}
 						onChange={(e) => setGuestContactNumber(e.target.value)}
 						placeholder="Contact Number"
-						required
-						className="w-full p-2 border border-gray-300 rounded"
-					/>
-				</div>
-
-				<div>
-					<label
-						htmlFor="guestPassword"
-						className="block text-sm font-medium text-gray-700 mb-1">
-						Password
-					</label>
-					<input
-						id="guestPassword"
-						type="password"
-						value={guestPassword}
-						onChange={(e) => setGuestPassword(e.target.value)}
-						placeholder="Create a Password"
-						required
-						className="w-full p-2 border border-gray-300 rounded"
-					/>
-				</div>
-
-				<div>
-					<label
-						htmlFor="confirmPassword"
-						className="block text-sm font-medium text-gray-700 mb-1">
-						Confirm Password
-					</label>
-					<input
-						id="confirmPassword"
-						type="password"
-						value={confirmPassword}
-						onChange={(e) => setConfirmPassword(e.target.value)}
-						placeholder="Confirm Password"
 						required
 						className="w-full p-2 border border-gray-300 rounded"
 					/>

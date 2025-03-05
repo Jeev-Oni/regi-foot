@@ -1,7 +1,6 @@
 // File: src/App.jsx
 import React from "react";
 import FirebaseAuth from "./components/FirebaseAuth";
-import "./App.css";
 
 function App() {
 	return (

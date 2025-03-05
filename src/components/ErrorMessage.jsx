@@ -1,4 +1,3 @@
-// File: src/components/firebase/ErrorMessage.jsx
 import React from "react";
 
 const ErrorMessage = ({ message }) => {
