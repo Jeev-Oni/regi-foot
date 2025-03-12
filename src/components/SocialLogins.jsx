@@ -44,7 +44,7 @@ const SocialLogins = ({ onGuestClick }) => {
 						clipRule="evenodd"
 					/>
 				</svg>
-				<span>Login as Guest</span>
+				<span>Continue as Guest</span>
 			</button>
 
 			{error && (

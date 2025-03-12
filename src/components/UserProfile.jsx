@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { database } from "../services/firebase";
-import { ref, get } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 import { logoutUser } from "../services/firebase";
 
 const UserProfile = ({ user }) => {
@@ -8,53 +8,33 @@ const UserProfile = ({ user }) => {
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
-		const fetchReservationDetails = async () => {
-			try {
-				// Fetch the most recent session reservation for this user
-				const sessionsRef = ref(database, "sessions");
-				const sessionsSnapshot = await get(sessionsRef);
+		if (!user) {
+			setIsLoading(false);
+			return;
+		}
 
-				if (sessionsSnapshot.exists()) {
-					const sessions = sessionsSnapshot.val();
-
-					// Iterate through sessions to find user's reservation
-					for (const sessionKey in sessions) {
-						const session = sessions[sessionKey];
-
-						for (const teamKey in session) {
-							if (teamKey !== "totalSlots") {
-								const team = session[teamKey];
-
-								if (team.slots) {
-									const userSlot = team.slots.find(
-										(slot) => slot && slot.userId === user.uid
-									);
-
-									if (userSlot) {
-										setReservationDetails({
-											name: userSlot.userName || "Guest",
-											session: sessionKey.replace(/-/g, " "),
-											team: teamKey,
-											slot: team.slots.indexOf(userSlot) + 1,
-											uid: user.uid,
-										});
-										break;
-									}
-								}
-							}
-						}
-					}
+		// Listen for changes in currentReservation
+		const currentResRef = ref(
+			database,
+			`users/${user.uid}/profile/currentReservation`
+		);
+		const unsubscribe = onValue(
+			currentResRef,
+			(snapshot) => {
+				if (snapshot.exists()) {
+					setReservationDetails(snapshot.val());
+				} else {
+					setReservationDetails(null);
 				}
-			} catch (error) {
+				setIsLoading(false);
+			},
+			(error) => {
 				console.error("Error fetching reservation details:", error);
-			} finally {
 				setIsLoading(false);
 			}
-		};
+		);
 
-		if (user) {
-			fetchReservationDetails();
-		}
+		return () => unsubscribe();
 	}, [user]);
 
 	const handleLogout = async () => {
@@ -87,12 +67,20 @@ const UserProfile = ({ user }) => {
 					<div className="bg-green-100 border border-green-300 p-4 rounded">
 						<h3 className="text-lg font-semibold mb-2">Reservation Details</h3>
 						<p>
-							<span className="font-medium">Name:</span>{" "}
-							{reservationDetails.name}
+							<span className="font-medium">Session ID:</span>{" "}
+							{reservationDetails.sessionId}
 						</p>
 						<p>
-							<span className="font-medium">Session:</span>{" "}
-							{reservationDetails.session}
+							<span className="font-medium">Event:</span>{" "}
+							{reservationDetails.sessionEvent}
+						</p>
+						<p>
+							<span className="font-medium">Date:</span>{" "}
+							{reservationDetails.sessionDate}
+						</p>
+						<p>
+							<span className="font-medium">Time:</span>{" "}
+							{reservationDetails.sessionTime}
 						</p>
 						<p>
 							<span className="font-medium">Team:</span>{" "}
@@ -100,10 +88,12 @@ const UserProfile = ({ user }) => {
 						</p>
 						<p>
 							<span className="font-medium">Slot:</span>{" "}
-							{reservationDetails.slot}
+							{reservationDetails.slotIndex + 1}
 						</p>
+						{/* NEW: Display the user ID you stored */}
 						<p>
-							<span className="font-medium">UID:</span> {reservationDetails.uid}
+							<span className="font-medium">User-ID:</span>{" "}
+							{reservationDetails.sessionuserID}
 						</p>
 					</div>
 				) : (

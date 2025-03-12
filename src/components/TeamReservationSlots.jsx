@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { database } from "../services/firebase";
 import { ref, get, update, remove, serverTimestamp } from "firebase/database";
+import SessionService from "../services/SessionService";
 
-// Inline Error Message Component
 const ErrorMessage = ({ message }) => {
 	if (!message) return null;
-
 	return (
 		<div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
 			<span className="block sm:inline">{message}</span>
@@ -14,31 +13,21 @@ const ErrorMessage = ({ message }) => {
 };
 
 const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
-	const teams = ["Team A", "Team B", "Team C"];
-	const [teamSlots, setTeamSlots] = useState({
-		"Team A": Array(9).fill(null),
-		"Team B": Array(9).fill(null),
-		"Team C": Array(9).fill(null),
-	});
-	const [teamPlayerCounts, setTeamPlayerCounts] = useState({
-		"Team A": 0,
-		"Team B": 0,
-		"Team C": 0,
-	});
+	const [teamSlots, setTeamSlots] = useState({});
+	const [teamPlayerCounts, setTeamPlayerCounts] = useState({});
 	const [userReservation, setUserReservation] = useState(null);
 	const [userName, setUserName] = useState("");
 	const [error, setError] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
+	const [sessionDetails, setSessionDetails] = useState(null);
 
-	// Fetch user profile and existing reservations
 	useEffect(() => {
 		const fetchUserProfileAndReservations = async () => {
 			try {
-				// Fetch user profile
+				// 1) Fetch user's display name
 				const userProfileRef = ref(database, `users/${user.uid}/profile`);
 				const profileSnapshot = await get(userProfileRef);
-
 				if (profileSnapshot.exists()) {
 					const profileData = profileSnapshot.val();
 					setUserName(profileData.name || user.displayName || "Guest");
@@ -46,132 +35,279 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 					setUserName(user.displayName || "Guest");
 				}
 
-				// Fetch session reservations
-				const sessionPath = selectedSession.replace(/\s+/g, "-");
-				const sessionRef = ref(database, `sessions/${sessionPath}`);
-				const snapshot = await get(sessionRef);
+				// 2) Fetch session details
+				const sessionData = await SessionService.getSessionDetails(
+					selectedSession.id
+				);
+				setSessionDetails(sessionData);
 
-				if (snapshot.exists()) {
-					const reservedData = snapshot.val();
-					const updatedTeamSlots = { ...teamSlots };
-					const updatedTeamPlayerCounts = {
-						"Team A": 0,
-						"Team B": 0,
-						"Team C": 0,
-					};
-					let userCurrentReservation = null;
-
-					teams.forEach((team) => {
-						if (reservedData[team]) {
-							updatedTeamSlots[team] = updatedTeamSlots[team].map(
-								(slot, index) => {
-									const slotData =
-										reservedData[team].slots && reservedData[team].slots[index]
-											? {
-													...reservedData[team].slots[index],
-													reserved: true,
-											  }
-											: null;
-
-									// Count reserved slots and find user's reservation
-									if (slotData && slotData.reserved) {
-										updatedTeamPlayerCounts[team]++;
-
-										if (slotData.userId === user.uid) {
-											userCurrentReservation = {
-												team,
-												slotIndex: index,
-												slotData,
-											};
-										}
-									}
-
-									return slotData;
-								}
-							);
-						}
-					});
-
-					setTeamSlots(updatedTeamSlots);
-					setTeamPlayerCounts(updatedTeamPlayerCounts);
-					setUserReservation(userCurrentReservation);
+				if (!sessionData.teams) {
+					setTeamSlots({});
+					setTeamPlayerCounts({});
+					setUserReservation(null);
+					return;
 				}
-			} catch (error) {
-				setError("Failed to fetch reservations. Please try again.");
-				console.error(error);
+
+				// 3) Build out all team slots and record any reservations by this user
+				const updatedTeamSlots = {};
+				const updatedTeamPlayerCounts = {};
+				const foundReservations = [];
+
+				const teams = Object.keys(sessionData.teams);
+				for (const team of teams) {
+					const teamData = sessionData.teams[team];
+					const totalSlots = teamData.slotCount || 8;
+
+					updatedTeamPlayerCounts[team] = 0;
+
+					// Ensure we're getting the slots object properly
+					const teamSlots = teamData.slots || {};
+					let slotsArray = Array(totalSlots).fill(null);
+
+					// If slots is an array, convert to our null-filled array
+					if (Array.isArray(teamData.slots)) {
+						for (
+							let i = 0;
+							i < Math.min(teamData.slots.length, totalSlots);
+							i++
+						) {
+							slotsArray[i] = teamData.slots[i];
+						}
+					}
+					// If slots is an object with numbered keys
+					else if (
+						typeof teamData.slots === "object" &&
+						teamData.slots !== null
+					) {
+						Object.keys(teamData.slots).forEach((slotKey) => {
+							const index = parseInt(slotKey, 10);
+							if (!isNaN(index) && index >= 0 && index < totalSlots) {
+								slotsArray[index] = teamData.slots[slotKey];
+							}
+						});
+					}
+
+					updatedTeamSlots[team] = slotsArray.map((slot, index) => {
+						if (slot) {
+							updatedTeamPlayerCounts[team]++;
+							if (slot.userId === user.uid) {
+								foundReservations.push({ team, slotIndex: index, slot });
+							}
+							return { ...slot, reserved: true };
+						}
+						return null;
+					});
+				}
+
+				// 4) If the user has multiple reservations across teams, keep the first & remove the rest
+				if (foundReservations.length > 0) {
+					const primary = foundReservations[0];
+					setUserReservation({
+						team: primary.team,
+						slotIndex: primary.slotIndex,
+						slotData: primary.slot,
+					});
+					if (foundReservations.length > 1) {
+						for (let i = 1; i < foundReservations.length; i++) {
+							const dup = foundReservations[i];
+							const dupRef = ref(
+								database,
+								`sessions/${selectedSession.id}/teams/${dup.team}/slots/${dup.slotIndex}`
+							);
+							await remove(dupRef);
+						}
+					}
+				} else {
+					setUserReservation(null);
+				}
+
+				setTeamSlots(updatedTeamSlots);
+				setTeamPlayerCounts(updatedTeamPlayerCounts);
+
+				// 5) Also verify currentReservation in user profile matches what we found
+				const currentResRef = ref(
+					database,
+					`users/${user.uid}/profile/currentReservation`
+				);
+				const currentResSnapshot = await get(currentResRef);
+
+				if (currentResSnapshot.exists()) {
+					const profileReservation = currentResSnapshot.val();
+
+					// If we found a reservation but the profile has different information
+					if (
+						foundReservations.length > 0 &&
+						(profileReservation.team !== foundReservations[0].team ||
+							profileReservation.slotIndex !== foundReservations[0].slotIndex ||
+							profileReservation.sessionId !== selectedSession.id)
+					) {
+						// Update profile to match the actual reservation we found
+						await update(currentResRef, {
+							team: foundReservations[0].team,
+							slotIndex: foundReservations[0].slotIndex,
+							sessionId: selectedSession.id,
+							sessionEvent: sessionDetails?.event || "Football Session",
+							sessionDate: sessionDetails?.date || "",
+							sessionTime: sessionDetails?.time || "",
+							sessionuserID: user.uid,
+							reservedAt: serverTimestamp(),
+						});
+					}
+					// If profile has reservation in this session but we didn't find one in team slots
+					else if (
+						foundReservations.length === 0 &&
+						profileReservation.sessionId === selectedSession.id
+					) {
+						// Remove incorrect profile reservation
+						await remove(currentResRef);
+					}
+					// If we found a reservation in current session but profile has reservation in different session
+					else if (
+						foundReservations.length > 0 &&
+						profileReservation.sessionId !== selectedSession.id
+					) {
+						// Update profile to match the actual reservation we found
+						await update(currentResRef, {
+							team: foundReservations[0].team,
+							slotIndex: foundReservations[0].slotIndex,
+							sessionId: selectedSession.id,
+							sessionEvent: sessionDetails?.event || "Football Session",
+							sessionDate: sessionDetails?.date || "",
+							sessionTime: sessionDetails?.time || "",
+							sessionuserID: user.uid,
+							reservedAt: serverTimestamp(),
+						});
+					}
+				} else if (foundReservations.length > 0) {
+					// If we found a reservation but no profile record exists, create one
+					await update(currentResRef, {
+						team: foundReservations[0].team,
+						slotIndex: foundReservations[0].slotIndex,
+						sessionId: selectedSession.id,
+						sessionEvent: sessionDetails?.event || "Football Session",
+						sessionDate: sessionDetails?.date || "",
+						sessionTime: sessionDetails?.time || "",
+						sessionuserID: user.uid,
+						reservedAt: serverTimestamp(),
+					});
+				}
+			} catch (err) {
+				console.error("Error fetching data:", err);
+				setError("Failed to load session data. Please try again.");
+			} finally {
+				setIsLoading(false);
 			}
 		};
 
-		if (selectedSession && user) {
+		if (user && selectedSession) {
 			fetchUserProfileAndReservations();
 		}
-	}, [selectedSession, user]);
+	}, [user, selectedSession]);
 
+	// Reserve a slot
 	const handleSlotSelection = async (team, slotIndex) => {
-		// Clear previous messages
 		setError("");
 		setSuccessMessage("");
 
-		// Check if user has already reserved a slot in any team
+		// Check if user already has a reservation anywhere
 		if (userReservation) {
-			setError("You have already reserved a slot in this session.");
+			setError(
+				"You already have a reservation in this session. Remove it first."
+			);
 			return;
 		}
 
-		// Check if slot is already reserved
+		// Check if the slot index is valid for this team
+		if (
+			!teamSlots[team] ||
+			slotIndex < 0 ||
+			slotIndex >= teamSlots[team].length
+		) {
+			setError("Invalid slot selected.");
+			return;
+		}
+
+		// Check if this slot is already taken
 		if (teamSlots[team][slotIndex]?.reserved) {
-			setError("This slot is already reserved");
+			setError("This slot is already reserved.");
 			return;
 		}
 
 		setIsLoading(true);
-
 		try {
-			// Prepare slot reservation data
+			// IMPORTANT: First check if user already has ANY reservation in ANY team
+			// This is an extra safeguard beyond the userReservation state check
+			const userProfileRef = ref(
+				database,
+				`users/${user.uid}/profile/currentReservation`
+			);
+			const profileSnapshot = await get(userProfileRef);
+
+			if (profileSnapshot.exists()) {
+				// User already has a reservation somewhere, handle this case
+				const existingReservation = profileSnapshot.val();
+				setError(
+					`You already have a reservation in ${
+						existingReservation.team
+					}, slot ${existingReservation.slotIndex + 1}. Remove it first.`
+				);
+				setIsLoading(false);
+				return;
+			}
+
 			const slotData = {
 				userId: user.uid,
-				userName: userName, // Use the fetched user name
+				userName,
 				reservedAt: serverTimestamp(),
 				reserved: true,
 			};
 
-			// Reference to the specific session, team, and slot
-			const sessionPath = selectedSession.replace(/\s+/g, "-");
+			// First update the database
 			const slotRef = ref(
 				database,
-				`sessions/${sessionPath}/${team}/slots/${slotIndex}`
+				`sessions/${selectedSession.id}/teams/${team}/slots/${slotIndex}`
 			);
-
-			// Update the slot in the database
 			await update(slotRef, slotData);
 
 			// Update local state
 			const updatedTeamSlots = { ...teamSlots };
 			updatedTeamSlots[team][slotIndex] = slotData;
-
-			// Update team player count
 			const updatedTeamPlayerCounts = { ...teamPlayerCounts };
 			updatedTeamPlayerCounts[team]++;
 
 			setTeamSlots(updatedTeamSlots);
 			setTeamPlayerCounts(updatedTeamPlayerCounts);
-			setUserReservation({
+
+			const newReservation = { team, slotIndex, slotData };
+			setUserReservation(newReservation);
+
+			// Also store in user's profile under currentReservation
+			await update(userProfileRef, {
+				sessionId: selectedSession.id,
+				sessionEvent: sessionDetails?.event || "Football Session",
+				sessionDate: sessionDetails?.date || "",
+				sessionTime: sessionDetails?.time || "",
 				team,
 				slotIndex,
-				slotData,
+				sessionuserID: user.uid,
+				reservedAt: serverTimestamp(),
 			});
-			setSuccessMessage(`Successfully reserved slot in ${team}`);
-		} catch (error) {
+
+			setSuccessMessage(
+				`Successfully reserved slot ${slotIndex + 1} in ${team}`
+			);
+		} catch (err) {
+			console.error("Error reserving slot:", err);
 			setError("Failed to reserve slot. Please try again.");
-			console.error(error);
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
+	// Remove the user's reservation
 	const handleRemoveReservation = async () => {
 		if (!userReservation) {
-			setError("No reservation to remove");
+			setError("No reservation to remove.");
 			return;
 		}
 
@@ -180,37 +316,50 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 		setSuccessMessage("");
 
 		try {
-			// Reference to the specific session, team, and slot
-			const sessionPath = selectedSession.replace(/\s+/g, "-");
 			const slotRef = ref(
 				database,
-				`sessions/${sessionPath}/${userReservation.team}/slots/${userReservation.slotIndex}`
+				`sessions/${selectedSession.id}/teams/${userReservation.team}/slots/${userReservation.slotIndex}`
 			);
-
-			// Remove the slot reservation from the database
 			await remove(slotRef);
 
-			// Update local state
 			const updatedTeamSlots = { ...teamSlots };
 			updatedTeamSlots[userReservation.team][userReservation.slotIndex] = null;
-
-			// Update team player count
 			const updatedTeamPlayerCounts = { ...teamPlayerCounts };
 			updatedTeamPlayerCounts[userReservation.team]--;
 
 			setTeamSlots(updatedTeamSlots);
 			setTeamPlayerCounts(updatedTeamPlayerCounts);
-
-			// Reset reservation
 			setUserReservation(null);
-			setSuccessMessage("Reservation removed successfully");
-		} catch (error) {
+
+			const userProfileRef = ref(
+				database,
+				`users/${user.uid}/profile/currentReservation`
+			);
+			await remove(userProfileRef);
+
+			setSuccessMessage("Reservation removed successfully.");
+		} catch (err) {
+			console.error("Error removing reservation:", err);
 			setError("Failed to remove reservation. Please try again.");
-			console.error(error);
 		} finally {
 			setIsLoading(false);
 		}
 	};
+
+	if (isLoading) {
+		return (
+			<div className="bg-white p-6 rounded-lg shadow-md">
+				<div className="flex justify-center">
+					<div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600"></div>
+				</div>
+			</div>
+		);
+	}
+
+	const teams =
+		sessionDetails && sessionDetails.teams
+			? Object.keys(sessionDetails.teams)
+			: [];
 
 	return (
 		<div className="bg-white p-6 rounded-lg shadow-md">
@@ -220,14 +369,13 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 					className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
 					Back to Sessions
 				</button>
-				<h2 className="text-2xl font-bold text-center text-gray-800">
-					Reservation for {selectedSession}
+				<h2 className="text-xl font-bold text-center text-gray-800">
+					{sessionDetails?.event || "Session"} - {sessionDetails?.date || ""}
 				</h2>
 				<div></div>
 			</div>
 
 			{error && <ErrorMessage message={error} />}
-
 			{successMessage && (
 				<div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
 					{successMessage}
@@ -237,7 +385,8 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 			{userReservation && (
 				<div className="flex justify-between items-center bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4">
 					<span>
-						You ({userName}) have reserved a slot in {userReservation.team}
+						You ({userName}) have reserved slot {userReservation.slotIndex + 1}{" "}
+						in {userReservation.team}
 					</span>
 					<button
 						onClick={handleRemoveReservation}
@@ -247,39 +396,45 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 				</div>
 			)}
 
-			{teams.map((team) => (
-				<div key={team} className="mb-6">
-					<div className="flex items-center mb-4">
-						<h3 className="text-xl font-semibold text-gray-800">{team}</h3>
-						<span className="ml-2 bg-red-600 text-white text-sm rounded-full px-2 py-1">
-							{teamPlayerCounts[team]}/9
-						</span>
+			{teams.length > 0 ? (
+				teams.map((team) => (
+					<div key={team} className="mb-6">
+						<div className="flex items-center mb-4">
+							<h3 className="text-xl font-semibold text-gray-800">{team}</h3>
+							<span className="ml-2 bg-red-600 text-white text-sm rounded-full px-2 py-1">
+								{teamPlayerCounts[team] || 0}/{teamSlots[team]?.length || 0}
+							</span>
+						</div>
+						<div className="grid grid-cols-3 gap-4">
+							{teamSlots[team]?.map((slot, index) => (
+								<button
+									key={index}
+									onClick={() => handleSlotSelection(team, index)}
+									disabled={
+										(slot?.reserved && slot?.userId !== user.uid) || isLoading
+									}
+									className={`p-4 rounded text-white font-bold truncate ${
+										slot?.reserved
+											? slot?.userId === user.uid
+												? "bg-green-500 cursor-default"
+												: "bg-gray-400 cursor-not-allowed"
+											: "bg-red-600 hover:bg-red-700 active:bg-red-800"
+									}`}>
+									{slot?.reserved
+										? slot.userName.length > 15
+											? `${slot.userName.substring(0, 15)}...`
+											: slot.userName
+										: `Slot ${index + 1}`}
+								</button>
+							))}
+						</div>
 					</div>
-					<div className="grid grid-cols-3 gap-4">
-						{teamSlots[team].map((slot, index) => (
-							<button
-								key={index}
-								onClick={() => handleSlotSelection(team, index)}
-								disabled={
-									(slot?.reserved && slot?.userId !== user.uid) || isLoading
-								}
-								className={`p-4 rounded text-white font-bold truncate ${
-									slot?.reserved
-										? slot?.userId === user.uid
-											? "bg-green-500 cursor-default"
-											: "bg-gray-400 cursor-not-allowed"
-										: "bg-red-600 hover:bg-red-700 active:bg-red-800"
-								}`}>
-								{slot?.reserved
-									? slot.userName.length > 15
-										? `${slot.userName.substring(0, 15)}...`
-										: slot.userName
-									: `Slot ${index + 1}`}
-							</button>
-						))}
-					</div>
+				))
+			) : (
+				<div className="text-center py-4 text-gray-600">
+					No team slots found for this session
 				</div>
-			))}
+			)}
 		</div>
 	);
 };

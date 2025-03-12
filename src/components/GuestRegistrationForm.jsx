@@ -142,7 +142,7 @@ const GuestRegistrationForm = ({ onCancel }) => {
 			</form>
 
 			<div className="mt-4 text-sm text-gray-600 italic">
-				<p>*Note: Registration is subject to availability.</p>
+				<p>*Note: Continuing as guest means you are needed to take note of your user-id</p>
 			</div>
 		</div>
 	);

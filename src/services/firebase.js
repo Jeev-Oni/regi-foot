@@ -1,3 +1,4 @@
+// firebase.js
 import { initializeApp } from "firebase/app";
 import {
 	getAuth,
@@ -6,8 +7,14 @@ import {
 	signInAnonymously,
 	signOut,
 } from "firebase/auth";
-import { getDatabase, ref, set, serverTimestamp } from "firebase/database";
-import { firebaseConfig } from "../components/FirebaseConfig";
+import {
+	getDatabase,
+	ref,
+	set,
+	update,
+	serverTimestamp,
+} from "firebase/database";
+import { firebaseConfig } from "../components/FirebaseConfig"; // or wherever your config is
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -15,19 +22,20 @@ export const auth = getAuth(app);
 export const database = getDatabase(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Save user login information
+// --- MODIFIED saveUserLoginInfo ---
+// Use update() instead of set() so we don't overwrite existing child nodes.
 export const saveUserLoginInfo = async (user, additionalData = {}) => {
 	try {
-		console.log("Saving user login info:", user.uid, additionalData);
-
-		// Ensure user object exists
 		if (!user || !user.uid) {
-			console.error("Invalid user object", user);
 			throw new Error("Invalid user authentication");
 		}
 
-		// Prepare user data
-		const userData = {
+		// We'll store some basic login info, but do NOT overwrite entire "profile"
+		const loginHistoryRef = ref(
+			database,
+			`users/${user.uid}/loginHistory/${Date.now()}`
+		);
+		await set(loginHistoryRef, {
 			userId: user.uid,
 			timestamp: serverTimestamp(),
 			email: user.email || "anonymous",
@@ -36,18 +44,11 @@ export const saveUserLoginInfo = async (user, additionalData = {}) => {
 			lastLogin: new Date().toISOString(),
 			userAgent: navigator.userAgent,
 			...additionalData,
-		};
+		});
 
-		// Save login history
-		const loginHistoryRef = ref(
-			database,
-			`users/${user.uid}/loginHistory/${Date.now()}`
-		);
-		await set(loginHistoryRef, userData);
-
-		// Save or update profile
+		// Now update the profile node (instead of overwriting with set())
 		const profileRef = ref(database, `users/${user.uid}/profile`);
-		await set(profileRef, {
+		await update(profileRef, {
 			name: additionalData.name || user.displayName || "Guest",
 			email: user.email || "anonymous",
 			age: additionalData.age || "",
@@ -66,16 +67,13 @@ export const saveUserLoginInfo = async (user, additionalData = {}) => {
 
 // Authentication methods
 export const loginWithGoogle = () => {
-	console.log("Attempting Google login");
 	return signInWithPopup(auth, googleProvider);
 };
 
 export const loginAsGuest = () => {
-	console.log("Attempting anonymous login");
 	return signInAnonymously(auth);
 };
 
 export const logoutUser = () => {
-	console.log("Logging out user");
 	return signOut(auth);
 };

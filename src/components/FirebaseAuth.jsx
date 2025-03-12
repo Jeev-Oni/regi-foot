@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../services/firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { availableSessions } from "./FirebaseConfig";
+import SessionService from "../services/SessionService";
 
 // Import components
 import SocialLogins from "./SocialLogins";
 import GuestRegistrationForm from "./GuestRegistrationForm";
 import UserProfile from "./UserProfile";
-import TeamReservationSlots from "../components/TeamReservationSlots";
+import TeamReservationSlots from "./TeamReservationSlots";
 
 const FirebaseAuth = () => {
 	const [user, setUser] = useState(null);
 	const [showGuestForm, setShowGuestForm] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
+	const [sessionsList, setSessionsList] = useState([]);
 	const [selectedSession, setSelectedSession] = useState(null);
 	const [authError, setAuthError] = useState(null);
 
@@ -40,6 +41,27 @@ const FirebaseAuth = () => {
 		// Cleanup subscription
 		return () => unsubscribe();
 	}, []);
+
+	// Fetch available sessions
+	useEffect(() => {
+		const fetchAvailableSessions = async () => {
+			if (user) {
+				try {
+					const activeSessions = await SessionService.fetchActiveSessions();
+					setSessionsList(activeSessions);
+				} catch (error) {
+					console.error("Failed to fetch sessions:", error);
+					setAuthError("Failed to load available sessions. Please try again.");
+				}
+			}
+		};
+
+		fetchAvailableSessions();
+	}, [user]);
+
+	const handleSessionSelect = (session) => {
+		setSelectedSession(session);
+	};
 
 	const handleBackToSessions = () => {
 		setSelectedSession(null);
@@ -83,14 +105,52 @@ const FirebaseAuth = () => {
 						Select Session
 					</h2>
 					<div className="space-y-4">
-						{availableSessions.map((session, index) => (
-							<button
-								key={index}
-								onClick={() => setSelectedSession(session)}
-								className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-								{session}
-							</button>
-						))}
+						{sessionsList.length > 0 ? (
+							sessionsList.map((session) => {
+								// 1) Parse the date string from Firebase (if it’s in ISO format)
+								const dateObj = new Date(session.date);
+								const isValidDate = !isNaN(dateObj.getTime());
+
+								// 2) Format the date: "March 12, 2025"
+								const formattedDate = isValidDate
+									? dateObj.toLocaleDateString("en-US", {
+											month: "long",
+											day: "numeric",
+											year: "numeric",
+									  })
+									: session.date; // fallback if not valid
+
+								// 3) Format the time: "8:19 PM"
+								const formattedTime = isValidDate
+									? dateObj.toLocaleTimeString("en-US", {
+											hour: "numeric",
+											minute: "2-digit",
+									  })
+									: session.time;
+
+								// 4) Build a nice label:
+								//    Use session.time if it’s not "Not specified", else use formattedTime
+								let finalTime =
+									session.time && session.time !== "Not specified"
+										? session.time
+										: formattedTime;
+
+								const buttonLabel = `${session.event} - ${formattedDate} @ ${finalTime}`;
+
+								return (
+									<button
+										key={session.id}
+										onClick={() => handleSessionSelect(session)}
+										className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+										{buttonLabel}
+									</button>
+								);
+							})
+						) : (
+							<p className="text-center text-gray-600">
+								No active sessions available
+							</p>
+						)}
 					</div>
 					<div className="mt-4">
 						<UserProfile user={user} />
