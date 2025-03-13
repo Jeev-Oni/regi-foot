@@ -160,39 +160,73 @@ const FirebaseAuth = () => {
 						</button>
 					</div>
 
-					<div className="space-y-4">
+					<div className="mb-6">
 						{sessionsList.length > 0 ? (
-							sessionsList.map((session) => {
-								const dateObj = new Date(session.date);
-								const isValidDate = !isNaN(dateObj.getTime());
-								const formattedDate = isValidDate
-									? dateObj.toLocaleDateString("en-US", {
-											month: "long",
-											day: "numeric",
-											year: "numeric",
-									  })
-									: session.date;
-								const formattedTime = isValidDate
-									? dateObj.toLocaleTimeString("en-US", {
-											hour: "numeric",
-											minute: "2-digit",
-									  })
-									: session.time;
-								let finalTime =
-									session.time && session.time !== "Not specified"
-										? session.time
-										: formattedTime;
+							<>
+								<label
+									htmlFor="sessionSelect"
+									className="block text-sm font-medium text-gray-700 mb-2">
+									Choose a session:
+								</label>
+								<select
+									id="sessionSelect"
+									className="w-full p-2 border border-gray-300 rounded bg-white"
+									onChange={(e) => {
+										const selectedId = e.target.value;
+										if (selectedId) {
+											const session = sessionsList.find(
+												(s) => s.id === selectedId
+											);
+											handleSessionSelect(session);
+										}
+									}}
+									defaultValue="">
+									<option value="" disabled>
+										Select a session
+									</option>
+									{sessionsList.map((session) => {
+										const dateObj = new Date(session.date);
+										const isValidDate = !isNaN(dateObj.getTime());
+										const formattedDate = isValidDate
+											? dateObj.toLocaleDateString("en-US", {
+													month: "long",
+													day: "numeric",
+													year: "numeric",
+											  })
+											: session.date;
+										const formattedTime = isValidDate
+											? dateObj.toLocaleTimeString("en-US", {
+													hour: "numeric",
+													minute: "2-digit",
+											  })
+											: session.time;
+										let finalTime =
+											session.time && session.time !== "Not specified"
+												? session.time
+												: formattedTime;
 
-								const buttonLabel = `${session.event} - ${formattedDate} @ ${finalTime}`;
-								return (
-									<button
-										key={session.id}
-										onClick={() => handleSessionSelect(session)}
-										className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-										{buttonLabel}
-									</button>
-								);
-							})
+										const optionLabel = `${session.event} - ${formattedDate} @ ${finalTime}`;
+										return (
+											<option key={session.id} value={session.id}>
+												{optionLabel}
+											</option>
+										);
+									})}
+								</select>
+								<button
+									onClick={() => {
+										const select = document.getElementById("sessionSelect");
+										if (select.value) {
+											const session = sessionsList.find(
+												(s) => s.id === select.value
+											);
+											handleSessionSelect(session);
+										}
+									}}
+									className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+									Select Session
+								</button>
+							</>
 						) : (
 							<div className="text-center text-gray-600 py-4">
 								<p>No active sessions available</p>
