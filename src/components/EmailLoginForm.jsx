@@ -20,7 +20,7 @@ const EmailLoginForm = () => {
 			);
 			await saveUserLoginInfo(userCredential.user);
 
-			// Ensure isLoading is set to false after successful login
+			
 			setIsLoading(false);
 		} catch (error) {
 			setError(error.message);

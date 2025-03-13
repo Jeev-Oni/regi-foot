@@ -19,7 +19,7 @@ const GuestRegistrationForm = ({ onCancel }) => {
 		setIsLoading(true);
 		setError("");
 
-		// Validation checks
+		
 		if (!guestName || !guestAge || !guestContactNumber) {
 			setError("Please fill in all fields");
 			setIsLoading(false);
@@ -27,11 +27,11 @@ const GuestRegistrationForm = ({ onCancel }) => {
 		}
 
 		try {
-			// Sign in anonymously
+			
 			const userCredential = await loginAsGuest();
 			const user = userCredential.user;
 
-			// Prepare guest user info
+			
 			const guestUserData = {
 				name: guestName,
 				age: guestAge,
@@ -40,17 +40,17 @@ const GuestRegistrationForm = ({ onCancel }) => {
 				isGuest: true,
 			};
 
-			// Save user login info
+			
 			await saveUserLoginInfo(user, guestUserData);
 
-			// Save password securely in the database
+			
 			const passwordRef = ref(database, `users/${user.uid}/credentials`);
 			await set(passwordRef, {
 				mobileNumber: guestContactNumber,
-				password: guestPassword, // In a real-world scenario, this should be hashed
+				password: guestPassword, 
 			});
 
-			// Set registration complete to trigger state change
+			
 			setRegistrationComplete(true);
 		} catch (error) {
 			setError(error.message || "Guest registration failed");
@@ -58,7 +58,7 @@ const GuestRegistrationForm = ({ onCancel }) => {
 		}
 	};
 
-	// If registration is complete, return null to allow parent component to handle
+	
 	if (registrationComplete) {
 		return null;
 	}

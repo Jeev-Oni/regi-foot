@@ -14,23 +14,18 @@ import {
 	update,
 	serverTimestamp,
 } from "firebase/database";
-import { firebaseConfig } from "../components/FirebaseConfig"; // or wherever your config is
+import { firebaseConfig } from "../components/FirebaseConfig"; 
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// --- MODIFIED saveUserLoginInfo ---
-// Use update() instead of set() so we don't overwrite existing child nodes.
 export const saveUserLoginInfo = async (user, additionalData = {}) => {
 	try {
 		if (!user || !user.uid) {
 			throw new Error("Invalid user authentication");
 		}
-
-		// We'll store some basic login info, but do NOT overwrite entire "profile"
 		const loginHistoryRef = ref(
 			database,
 			`users/${user.uid}/loginHistory/${Date.now()}`
@@ -45,8 +40,6 @@ export const saveUserLoginInfo = async (user, additionalData = {}) => {
 			userAgent: navigator.userAgent,
 			...additionalData,
 		});
-
-		// Now update the profile node (instead of overwriting with set())
 		const profileRef = ref(database, `users/${user.uid}/profile`);
 		await update(profileRef, {
 			name: additionalData.name || user.displayName || "Guest",
@@ -65,7 +58,6 @@ export const saveUserLoginInfo = async (user, additionalData = {}) => {
 	}
 };
 
-// Authentication methods
 export const loginWithGoogle = () => {
 	return signInWithPopup(auth, googleProvider);
 };

@@ -25,7 +25,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 	useEffect(() => {
 		const fetchUserProfileAndReservations = async () => {
 			try {
-				// 1) Fetch user's display name
+				
 				const userProfileRef = ref(database, `users/${user.uid}/profile`);
 				const profileSnapshot = await get(userProfileRef);
 				if (profileSnapshot.exists()) {
@@ -35,7 +35,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 					setUserName(user.displayName || "Guest");
 				}
 
-				// 2) Fetch session details
+				
 				const sessionData = await SessionService.getSessionDetails(
 					selectedSession.id
 				);
@@ -48,7 +48,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 					return;
 				}
 
-				// 3) Build out all team slots and record any reservations by this user
+				
 				const updatedTeamSlots = {};
 				const updatedTeamPlayerCounts = {};
 				const foundReservations = [];
@@ -60,11 +60,11 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 
 					updatedTeamPlayerCounts[team] = 0;
 
-					// Ensure we're getting the slots object properly
+					
 					const teamSlots = teamData.slots || {};
 					let slotsArray = Array(totalSlots).fill(null);
 
-					// If slots is an array, convert to our null-filled array
+					
 					if (Array.isArray(teamData.slots)) {
 						for (
 							let i = 0;
@@ -74,7 +74,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 							slotsArray[i] = teamData.slots[i];
 						}
 					}
-					// If slots is an object with numbered keys
+					
 					else if (
 						typeof teamData.slots === "object" &&
 						teamData.slots !== null
@@ -99,7 +99,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 					});
 				}
 
-				// 4) If the user has multiple reservations across teams, keep the first & remove the rest
+				
 				if (foundReservations.length > 0) {
 					const primary = foundReservations[0];
 					setUserReservation({
@@ -124,7 +124,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 				setTeamSlots(updatedTeamSlots);
 				setTeamPlayerCounts(updatedTeamPlayerCounts);
 
-				// 5) Also verify currentReservation in user profile matches what we found
+				
 				const currentResRef = ref(
 					database,
 					`users/${user.uid}/profile/currentReservation`
@@ -134,14 +134,14 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 				if (currentResSnapshot.exists()) {
 					const profileReservation = currentResSnapshot.val();
 
-					// If we found a reservation but the profile has different information
+					
 					if (
 						foundReservations.length > 0 &&
 						(profileReservation.team !== foundReservations[0].team ||
 							profileReservation.slotIndex !== foundReservations[0].slotIndex ||
 							profileReservation.sessionId !== selectedSession.id)
 					) {
-						// Update profile to match the actual reservation we found
+						
 						await update(currentResRef, {
 							team: foundReservations[0].team,
 							slotIndex: foundReservations[0].slotIndex,
@@ -153,20 +153,20 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 							reservedAt: serverTimestamp(),
 						});
 					}
-					// If profile has reservation in this session but we didn't find one in team slots
+					
 					else if (
 						foundReservations.length === 0 &&
 						profileReservation.sessionId === selectedSession.id
 					) {
-						// Remove incorrect profile reservation
+						
 						await remove(currentResRef);
 					}
-					// If we found a reservation in current session but profile has reservation in different session
+					
 					else if (
 						foundReservations.length > 0 &&
 						profileReservation.sessionId !== selectedSession.id
 					) {
-						// Update profile to match the actual reservation we found
+						
 						await update(currentResRef, {
 							team: foundReservations[0].team,
 							slotIndex: foundReservations[0].slotIndex,
@@ -179,7 +179,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 						});
 					}
 				} else if (foundReservations.length > 0) {
-					// If we found a reservation but no profile record exists, create one
+					
 					await update(currentResRef, {
 						team: foundReservations[0].team,
 						slotIndex: foundReservations[0].slotIndex,
@@ -204,12 +204,12 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 		}
 	}, [user, selectedSession]);
 
-	// Reserve a slot
+	
 	const handleSlotSelection = async (team, slotIndex) => {
 		setError("");
 		setSuccessMessage("");
 
-		// Check if user already has a reservation anywhere
+		
 		if (userReservation) {
 			setError(
 				"You already have a reservation in this session. Remove it first."
@@ -217,7 +217,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 			return;
 		}
 
-		// Check if the slot index is valid for this team
+		
 		if (
 			!teamSlots[team] ||
 			slotIndex < 0 ||
@@ -227,7 +227,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 			return;
 		}
 
-		// Check if this slot is already taken
+		
 		if (teamSlots[team][slotIndex]?.reserved) {
 			setError("This slot is already reserved.");
 			return;
@@ -235,8 +235,8 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 
 		setIsLoading(true);
 		try {
-			// IMPORTANT: First check if user already has ANY reservation in ANY team
-			// This is an extra safeguard beyond the userReservation state check
+			
+			
 			const userProfileRef = ref(
 				database,
 				`users/${user.uid}/profile/currentReservation`
@@ -244,7 +244,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 			const profileSnapshot = await get(userProfileRef);
 
 			if (profileSnapshot.exists()) {
-				// User already has a reservation somewhere, handle this case
+				
 				const existingReservation = profileSnapshot.val();
 				setError(
 					`You already have a reservation in ${
@@ -262,14 +262,14 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 				reserved: true,
 			};
 
-			// First update the database
+			
 			const slotRef = ref(
 				database,
 				`sessions/${selectedSession.id}/teams/${team}/slots/${slotIndex}`
 			);
 			await update(slotRef, slotData);
 
-			// Update local state
+			
 			const updatedTeamSlots = { ...teamSlots };
 			updatedTeamSlots[team][slotIndex] = slotData;
 			const updatedTeamPlayerCounts = { ...teamPlayerCounts };
@@ -281,7 +281,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 			const newReservation = { team, slotIndex, slotData };
 			setUserReservation(newReservation);
 
-			// Also store in user's profile under currentReservation
+			
 			await update(userProfileRef, {
 				sessionId: selectedSession.id,
 				sessionEvent: sessionDetails?.event || "Football Session",
@@ -304,7 +304,7 @@ const TeamReservationSlots = ({ user, selectedSession, onBack }) => {
 		}
 	};
 
-	// Remove the user's reservation
+	
 	const handleRemoveReservation = async () => {
 		if (!userReservation) {
 			setError("No reservation to remove.");

@@ -8,6 +8,3 @@ export const firebaseConfig = {
 	messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
 	appId: "YOUR_APP_ID",
 };
-
-// Available sessions
-export const availableSessions = ["February 08, 2024"];

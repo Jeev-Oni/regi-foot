@@ -13,7 +13,7 @@ const UserProfile = ({ user }) => {
 			return;
 		}
 
-		// Listen for changes in currentReservation
+		
 		const currentResRef = ref(
 			database,
 			`users/${user.uid}/profile/currentReservation`
@@ -90,7 +90,6 @@ const UserProfile = ({ user }) => {
 							<span className="font-medium">Slot:</span>{" "}
 							{reservationDetails.slotIndex + 1}
 						</p>
-						{/* NEW: Display the user ID you stored */}
 						<p>
 							<span className="font-medium">User-ID:</span>{" "}
 							{reservationDetails.sessionuserID}
