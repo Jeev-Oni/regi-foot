@@ -6,7 +6,6 @@ import SocialLogins from "./SocialLogins";
 import GuestRegistrationForm from "./GuestRegistrationForm";
 import UserProfile from "./UserProfile";
 import TeamReservationSlots from "./TeamReservationSlots";
-
 const FirebaseAuth = () => {
 	const [user, setUser] = useState(null);
 	const [showGuestForm, setShowGuestForm] = useState(false);
@@ -98,172 +97,167 @@ const FirebaseAuth = () => {
 
 	if (showGuestForm) {
 		return (
-			<div className="max-w-md mx-auto my-8">
-				<AuthErrorDisplay />
-				<GuestRegistrationForm onCancel={() => setShowGuestForm(false)} />
+			<div
+				className="min-h-screen flex items-center justify-center"
+				style={{
+					background: "radial-gradient(circle, #f80a0a 0%, #8e0e0e 100%)",
+				}}>
+				<div className="max-w-md mx-auto my-8">
+					<AuthErrorDisplay />
+					<GuestRegistrationForm onCancel={() => setShowGuestForm(false)} />
+				</div>
 			</div>
 		);
 	}
 
 	if (user && !selectedSession) {
 		return (
-			// Increase the max-width so we have enough horizontal space for two columns
-			<div className="max-w-5xl mx-auto my-8">
-				<AuthErrorDisplay />
-
-				{/* Main flex container to hold content on the left and disclaimer on the right */}
-				<div className="flex gap-6">
-					{/* LEFT COLUMN: Main Content */}
-					<div className="flex-1 bg-white p-6 rounded-lg shadow-md">
-						<div className="flex justify-between items-center mb-6">
-							<h2 className="text-2xl font-bold text-gray-800">
-								Select Session
-							</h2>
-							<button
-								onClick={handleRefreshSessions}
-								disabled={refreshing}
-								className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded flex items-center">
-								{refreshing ? (
-									<>
-										<svg
-											className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-											xmlns="http://www.w3.org/2000/svg"
-											fill="none"
-											viewBox="0 0 24 24">
-											<circle
-												className="opacity-25"
-												cx="12"
-												cy="12"
-												r="10"
+			<div
+				className="fixed inset-0 flex items-center justify-center overflow-y-auto"
+				style={{
+					background: "radial-gradient(circle, #f80a0a 0%, #ad0707 100%)",
+				}}>
+				<div className="max-w-5xl mx-auto my-8">
+					<AuthErrorDisplay />
+					<div className="flex gap-6">
+						<div className="flex-1 bg-white p-6 rounded-lg shadow-md">
+							<div className="flex justify-between items-center mb-6">
+								<h2 className="text-2xl font-bold text-gray-800">
+									Select Session
+								</h2>
+								<button
+									onClick={handleRefreshSessions}
+									disabled={refreshing}
+									className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded flex items-center">
+									{refreshing ? (
+										<>
+											<svg
+												className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24">
+												<circle
+													className="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													strokeWidth="4"></circle>
+												<path
+													className="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+											</svg>
+											Refreshing...
+										</>
+									) : (
+										<>
+											<svg
+												className="w-4 h-4 mr-1"
+												fill="none"
 												stroke="currentColor"
-												strokeWidth="4"></circle>
-											<path
-												className="opacity-75"
-												fill="currentColor"
-												d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-										</svg>
-										Refreshing...
+												viewBox="0 0 24 24"
+												xmlns="http://www.w3.org/2000/svg">
+												<path
+													strokeLinecap="round"
+													strokeLinejoin="round"
+													strokeWidth="2"
+													d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+											</svg>
+											Refresh Sessions
+										</>
+									)}
+								</button>
+							</div>
+
+							<div className="mb-6">
+								{sessionsList.length > 0 ? (
+									<>
+										<label
+											htmlFor="sessionSelect"
+											className="block text-sm font-medium text-gray-700 mb-2">
+											Choose a session:
+										</label>
+										<select
+											id="sessionSelect"
+											className="w-full p-2 border border-gray-300 rounded bg-white"
+											onChange={(e) => {
+												const selectedId = e.target.value;
+												if (selectedId) {
+													const session = sessionsList.find(
+														(s) => s.id === selectedId
+													);
+													handleSessionSelect(session);
+												}
+											}}
+											defaultValue="">
+											<option value="" disabled>
+												Select a session
+											</option>
+											{sessionsList.map((session) => {
+												const dateObj = new Date(session.date);
+												const isValidDate = !isNaN(dateObj.getTime());
+												const formattedDate = isValidDate
+													? dateObj.toLocaleDateString("en-US", {
+															month: "long",
+															day: "numeric",
+															year: "numeric",
+													})
+													: session.date;
+												const formattedTime = isValidDate
+													? dateObj.toLocaleTimeString("en-US", {
+															hour: "numeric",
+															minute: "2-digit",
+													})
+													: session.time;
+												let finalTime =
+													session.time && session.time !== "Not specified"
+														? session.time
+														: formattedTime;
+
+												const optionLabel = `${session.event} - ${formattedDate} @ ${finalTime}`;
+												return (
+													<option key={session.id} value={session.id}>
+														{optionLabel}
+													</option>
+												);
+											})}
+										</select>
 									</>
 								) : (
-									<>
-										<svg
-											className="w-4 h-4 mr-1"
-											fill="none"
-											stroke="currentColor"
-											viewBox="0 0 24 24"
-											xmlns="http://www.w3.org/2000/svg">
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth="2"
-												d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-										</svg>
-										Refresh Sessions
-									</>
+									<div className="text-center text-gray-600 py-4">
+										<p>No active sessions available</p>
+										<button
+											onClick={handleRefreshSessions}
+											className="text-blue-500 hover:text-blue-700 underline mt-2">
+											Click to refresh
+										</button>
+									</div>
 								)}
-							</button>
+							</div>
+
+							<div className="mt-4">
+								<UserProfile user={user} />
+							</div>
 						</div>
 
-						<div className="mb-6">
-							{sessionsList.length > 0 ? (
-								<>
-									<label
-										htmlFor="sessionSelect"
-										className="block text-sm font-medium text-gray-700 mb-2">
-										Choose a session:
-									</label>
-									<select
-										id="sessionSelect"
-										className="w-full p-2 border border-gray-300 rounded bg-white"
-										onChange={(e) => {
-											const selectedId = e.target.value;
-											if (selectedId) {
-												const session = sessionsList.find(
-													(s) => s.id === selectedId
-												);
-												handleSessionSelect(session);
-											}
-										}}
-										defaultValue="">
-										<option value="" disabled>
-											Select a session
-										</option>
-										{sessionsList.map((session) => {
-											const dateObj = new Date(session.date);
-											const isValidDate = !isNaN(dateObj.getTime());
-											const formattedDate = isValidDate
-												? dateObj.toLocaleDateString("en-US", {
-														month: "long",
-														day: "numeric",
-														year: "numeric",
-												  })
-												: session.date;
-											const formattedTime = isValidDate
-												? dateObj.toLocaleTimeString("en-US", {
-														hour: "numeric",
-														minute: "2-digit",
-												  })
-												: session.time;
-											let finalTime =
-												session.time && session.time !== "Not specified"
-													? session.time
-													: formattedTime;
-
-											const optionLabel = `${session.event} - ${formattedDate} @ ${finalTime}`;
-											return (
-												<option key={session.id} value={session.id}>
-													{optionLabel}
-												</option>
-											);
-										})}
-									</select>
-									<button
-										onClick={() => {
-											const select = document.getElementById("sessionSelect");
-											if (select.value) {
-												const session = sessionsList.find(
-													(s) => s.id === select.value
-												);
-												handleSessionSelect(session);
-											}
-										}}
-										className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-										Select Session
-									</button>
-								</>
-							) : (
-								<div className="text-center text-gray-600 py-4">
-									<p>No active sessions available</p>
-									<button
-										onClick={handleRefreshSessions}
-										className="text-blue-500 hover:text-blue-700 underline mt-2">
-										Click to refresh
-									</button>
-								</div>
-							)}
+						{/* RIGHT COLUMN: Disclaimer */}
+						<div
+							className="w-1/3 bg-yellow-100 border-l-8 border-yellow-600 p-4 h-min rounded-md"
+							role="alert">
+							<h3 className="text-2xl font-extrabold text-yellow-800 uppercase">
+								Important Disclaimer
+							</h3>
+							<p className="text-yellow-700 mt-3 text-base leading-relaxed">
+								The information displayed in this system (including session
+								availability, dates, and times) is provided for convenience only
+								and is subject to change without prior notice. By using this
+								platform, you acknowledge that Football Lipa and its affiliates
+								shall not be held liable for any errors, omissions, or scheduling
+								changes. It is your responsibility to verify final details before
+								attending.
+							</p>
 						</div>
-
-						<div className="mt-4">
-							<UserProfile user={user} />
-						</div>
-					</div>
-
-					{/* RIGHT COLUMN: Disclaimer */}
-					<div
-						className="w-1/3 bg-yellow-100 border-l-8 border-yellow-600 p-4 h-min rounded-md"
-						role="alert">
-						<h3 className="text-2xl font-extrabold text-yellow-800 uppercase">
-							Important Disclaimer
-						</h3>
-						<p className="text-yellow-700 mt-3 text-base leading-relaxed">
-							The information displayed in this system (including session
-							availability, dates, and times) is provided for convenience only
-							and is subject to change without prior notice. By using this
-							platform, you acknowledge that Football Lipa and its affiliates
-							shall not be held liable for any errors, omissions, or scheduling
-							changes. It is your responsibility to verify final details before
-							attending.
-						</p>
 					</div>
 				</div>
 			</div>
@@ -272,20 +266,47 @@ const FirebaseAuth = () => {
 
 	if (user && selectedSession) {
 		return (
-			<div className="max-w-md mx-auto my-8">
-				<TeamReservationSlots
-					user={user}
-					selectedSession={selectedSession}
-					onBack={handleBackToSessions}
-				/>
+			<div
+				className="min-h-screen flex items-center justify-center"
+				style={{
+					background: "radial-gradient(circle, #f80a0a 0%, #600101 100%)",
+				}}>
+				<div className="max-w-md mx-auto my-8">
+					<TeamReservationSlots
+						user={user}
+						selectedSession={selectedSession}
+						onBack={handleBackToSessions}
+					/>
+				</div>
 			</div>
 		);
 	}
 
+
 	return (
-		<div className="max-w-md mx-auto my-8">
-			<AuthErrorDisplay />
-			<div className="bg-white p-6 rounded-lg shadow-md">
+		<div className="relative min-h-screen flex items-center justify-center">
+			{/* Background Image with object-fit scaling */}
+			<div className="absolute inset-0 overflow-hidden">
+				<img
+					src="football-bg.jpg"
+					alt="Football field"
+					className="w-full h-full object-cover object-center"
+					style={{ filter: "brightness(0.8)" }}
+				/>
+			</div>
+
+			{/* Floating Logo */}
+			<div className="absolute top-10 left-1/2 transform -translate-x-1/2 w-64 h-64 z-10">
+				<img
+					src="Lipa.png"
+					alt="Football Logo"
+					className="w-full h-full object-contain"
+				/>
+			</div>
+
+			{/* Login Container */}
+			<div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 z-10 relative mt-56">
+				<AuthErrorDisplay />
 				<h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
 					FOOTBALL LIPA APPOINTMENT SYSTEM
 				</h2>

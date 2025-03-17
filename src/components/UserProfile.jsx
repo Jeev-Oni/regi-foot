@@ -5,6 +5,7 @@ import { logoutUser } from "../services/firebase";
 
 const UserProfile = ({ user }) => {
 	const [reservationDetails, setReservationDetails] = useState(null);
+	const [userData, setUserData] = useState(null);
 	const [isLoading, setIsLoading] = useState(true);
 
 	useEffect(() => {
@@ -13,12 +14,12 @@ const UserProfile = ({ user }) => {
 			return;
 		}
 
-		
+		// Fetch reservation details
 		const currentResRef = ref(
 			database,
 			`users/${user.uid}/profile/currentReservation`
 		);
-		const unsubscribe = onValue(
+		const unsubscribeRes = onValue(
 			currentResRef,
 			(snapshot) => {
 				if (snapshot.exists()) {
@@ -34,7 +35,18 @@ const UserProfile = ({ user }) => {
 			}
 		);
 
-		return () => unsubscribe();
+		// Fetch user profile data (e.g., guest registration data)
+		const userRef = ref(database, `users/${user.uid}`);
+		const unsubscribeUser = onValue(userRef, (snapshot) => {
+			if (snapshot.exists()) {
+				setUserData(snapshot.val());
+			}
+		});
+
+		return () => {
+			unsubscribeRes();
+			unsubscribeUser();
+		};
 	}, [user]);
 
 	const handleLogout = async () => {
@@ -59,7 +71,7 @@ const UserProfile = ({ user }) => {
 	return (
 		<div className="bg-white p-6 rounded-lg shadow-md">
 			<h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-				Welcome, {user.displayName || "Guest"}
+				Welcome, {(userData && userData.name) || user.displayName || "Guest"}
 			</h2>
 
 			<div className="space-y-2 mb-6">
