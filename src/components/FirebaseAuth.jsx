@@ -251,11 +251,9 @@ const FirebaseAuth = () => {
 							<p className="text-yellow-700 mt-3 text-base leading-relaxed">
 								The information displayed in this system (including session
 								availability, dates, and times) is provided for convenience only
-								and is subject to change without prior notice. By using this
-								platform, you acknowledge that Football Lipa and its affiliates
-								shall not be held liable for any errors, omissions, or scheduling
-								changes. It is your responsibility to verify final details before
-								attending.
+								and is subject to change without prior notice. 
+								
+								Please if you are logging in as guest please screenshot or remember your USER-ID or UID for verification. 
 							</p>
 						</div>
 					</div>
